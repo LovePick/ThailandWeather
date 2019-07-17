@@ -8,6 +8,7 @@
 
 import UIKit
 import MapKit
+import CoreLocation
 
 
 class ViewController: UIViewController {
@@ -21,10 +22,24 @@ class ViewController: UIViewController {
     private let weatherViewModel:WeatherMapViewModel = WeatherMapViewModel()
     private var arPin:[MKPointAnnotation] = [MKPointAnnotation]()
     
+    private var locationManager = CLLocationManager()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         self.mapView.showsUserLocation = true
+        
+        if CLLocationManager.locationServicesEnabled() == true{
+            if CLLocationManager.authorizationStatus() == .restricted || CLLocationManager.authorizationStatus() == .denied ||
+                CLLocationManager.authorizationStatus() == .notDetermined{
+                locationManager.requestWhenInUseAuthorization()
+            }
+            
+            locationManager.desiredAccuracy = 1.0
+            locationManager.delegate = self
+            
+        }
+        
         self.mapView.delegate = self
     }
 
@@ -35,6 +50,7 @@ class ViewController: UIViewController {
         
         self.loadWeatherData()
         
+        locationManager.startUpdatingLocation()
     }
 
     
@@ -98,7 +114,7 @@ class ViewController: UIViewController {
    
 }
 
-
+//MARK:- MKMapViewDelegate
 extension ViewController:MKMapViewDelegate{
     
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -117,5 +133,26 @@ extension ViewController:MKMapViewDelegate{
         annotationView?.displayPriority = .required
         
         return annotationView
+    }
+}
+
+//MARK:- CLLocationManagerDelegate
+extension ViewController:CLLocationManagerDelegate{
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        
+        let userLocation = CLLocationCoordinate2D(latitude: locations[0].coordinate.latitude, longitude: locations[0].coordinate.longitude)
+        let span = MKCoordinateSpan(latitudeDelta: 0.2, longitudeDelta: 0.2)
+        let region = MKCoordinateRegion(center: userLocation, span: span)
+        
+        self.mapView.setRegion(region, animated: true)
+        
+        self.locationManager.stopUpdatingLocation()
+    }
+    
+    
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        
+        print(error.localizedDescription)
     }
 }
